@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "M-PESA to Excel",
+    "slug": "mpesa-statement-to-excel",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "mpesaexcel",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.mpesa.statementtoexcel",
+      "adaptiveIcon": {
+        "backgroundColor": "#F0FFF4"
+      },
+      "permissions": []
+    },
+    "plugins": [
+      "expo-router",
+      "./plugins/withPdfJs",
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
