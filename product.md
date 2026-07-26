@@ -1,4 +1,10 @@
 M-PESA Statement to Excel Converter — Product Requirements (v1)
+
+> This file preserves the original v1 product requirements. For the exact current
+> implementation, completed scope, differences, and remaining release work, see
+> `docs/IMPLEMENTATION_STATUS.md`. Engineering behavior is documented in
+> `docs/ARCHITECTURE.md`.
+
 1. Overview
 
 A free, frontend-only React Native (Expo) mobile app that lets users convert their M-PESA PDF statements into clean Excel spreadsheets — entirely on-device, no backend, no login, no payment. Positioned as a community utility tool.
