@@ -15,3 +15,28 @@ export type StatementSummary = {
   totalPaidIn: number;
   totalWithdrawn: number;
 };
+
+export type DeclaredStatementTotals = {
+  totalPaidIn: number;
+  totalWithdrawn: number;
+};
+
+export type StatementReconciliation =
+  | {
+      status: "matched";
+      declared: DeclaredStatementTotals;
+      paidInDifference: number;
+      withdrawnDifference: number;
+    }
+  | {
+      status: "mismatch";
+      declared: DeclaredStatementTotals;
+      paidInDifference: number;
+      withdrawnDifference: number;
+    }
+  | {
+      status: "unavailable";
+      declared: null;
+      paidInDifference: null;
+      withdrawnDifference: null;
+    };

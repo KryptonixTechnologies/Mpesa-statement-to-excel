@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -7,13 +7,29 @@ import { Screen } from "@/components/Screen";
 import { useConversion } from "@/features/conversion/ConversionContext";
 import { createExcelFile, shareExcelFile } from "@/features/export/services/excelExporter";
 import { SummaryCard } from "@/features/preview/components/SummaryCard";
+import { ReconciliationBanner } from "@/features/preview/components/ReconciliationBanner";
 import { TransactionRow } from "@/features/preview/components/TransactionRow";
 import { colors } from "@/theme/colors";
 import { spacing } from "@/theme/spacing";
+import type { Transaction } from "@/types/transaction";
+
+const transactionKey = (item: Transaction, index: number) => `${item.receiptNo}-${index}`;
+
+function yieldToInterface() {
+  return new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+}
 
 export function PreviewScreen() {
   const router = useRouter();
-  const { transactions, summary, setExportedFileUri, setError } = useConversion();
+  const {
+    transactions,
+    summary,
+    reconciliation,
+    setExportedFileUri,
+    setError,
+  } = useConversion();
   const [exporting, setExporting] = useState(false);
 
   if (!summary || !transactions.length) {
@@ -22,8 +38,12 @@ export function PreviewScreen() {
   }
 
   async function exportStatement() {
+    if (!reconciliation || reconciliation.status === "mismatch") return;
     setExporting(true);
     try {
+      // Let React commit the loading indicator before SheetJS begins its
+      // synchronous workbook construction.
+      await yieldToInterface();
       const uri = await createExcelFile(transactions, summary!);
       setExportedFileUri(uri);
       await shareExcelFile(uri);
@@ -36,6 +56,11 @@ export function PreviewScreen() {
     }
   }
 
+  const renderTransaction = useCallback(
+    ({ item }: { item: Transaction }) => <TransactionRow transaction={item} />,
+    [],
+  );
+
   return (
     <Screen style={styles.screen}>
       <View style={styles.header}>
@@ -47,18 +72,33 @@ export function PreviewScreen() {
           <MaterialCommunityIcons name="check-decagram" size={30} color={colors.primary} />
         </View>
         <SummaryCard summary={summary} />
+        {reconciliation && reconciliation.status !== "matched" && (
+          <ReconciliationBanner reconciliation={reconciliation} />
+        )}
       </View>
       <FlatList
         data={transactions}
-        keyExtractor={(item, index) => `${item.receiptNo}-${index}`}
-        renderItem={({ item }) => <TransactionRow transaction={item} />}
+        keyExtractor={transactionKey}
+        renderItem={renderTransaction}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
-        initialNumToRender={12}
-        windowSize={7}
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        updateCellsBatchingPeriod={50}
+        windowSize={5}
+        removeClippedSubviews
       />
       <View style={styles.footer}>
-        <AppButton label="Create Excel file" onPress={exportStatement} loading={exporting} />
+        <AppButton
+          label={
+            reconciliation?.status === "mismatch"
+              ? "Export blocked — totals differ"
+              : "Create Excel file"
+          }
+          onPress={exportStatement}
+          loading={exporting}
+          disabled={!reconciliation || reconciliation.status === "mismatch"}
+        />
       </View>
     </Screen>
   );

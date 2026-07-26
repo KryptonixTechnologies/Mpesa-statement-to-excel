@@ -1,5 +1,5 @@
 import type { PdfTextItem } from "@/types/pdf";
-import type { Transaction } from "@/types/transaction";
+import type { DeclaredStatementTotals, Transaction } from "@/types/transaction";
 
 const RECEIPT_PATTERN = /^[A-Z0-9]{10,12}$/i;
 const DATE_PATTERN =
@@ -265,4 +265,82 @@ export function parseMpesaStatement(pages: PdfTextItem[][]): Transaction[] {
   }
 
   return transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
+
+function transactionSignature(transaction: Transaction) {
+  return JSON.stringify([
+    transaction.receiptNo,
+    transaction.date,
+    transaction.details,
+    transaction.status,
+    transaction.paidIn,
+    transaction.withdrawn,
+    transaction.balance,
+  ]);
+}
+
+export function extractDeclaredStatementTotals(
+  items: PdfTextItem[],
+): DeclaredStatementTotals | null {
+  for (const row of groupRows(items)) {
+    const values = row.items.map((item) => normalize(item.text)).filter(Boolean);
+    const firstValue = values[0]?.replace(/\s+/g, " ");
+    if (!/^total\s*:?$/i.test(firstValue ?? "")) continue;
+
+    const amounts = values
+      .map(parseMoney)
+      .filter((value): value is number => value !== null);
+    if (amounts.length < 2) continue;
+
+    return {
+      totalPaidIn: Math.abs(amounts.at(-2)!),
+      totalWithdrawn: Math.abs(amounts.at(-1)!),
+    };
+  }
+  return null;
+}
+
+export type IncrementalParser = {
+  addPage: (items: PdfTextItem[]) => {
+    addedTransactions: number;
+    totalTransactions: number;
+  };
+  getDeclaredTotals: () => DeclaredStatementTotals | null;
+  finish: () => Transaction[];
+};
+
+/**
+ * Parses and discards one PDF page at a time. Only normalized transactions and
+ * compact signatures are retained between pages.
+ */
+export function createIncrementalMpesaParser(): IncrementalParser {
+  const transactions: Transaction[] = [];
+  const seenRows = new Set<string>();
+  let declaredTotals: DeclaredStatementTotals | null = null;
+
+  return {
+    addPage(items) {
+      declaredTotals ??= extractDeclaredStatementTotals(items);
+      const pageTransactions = parseMpesaStatement([items]);
+      let addedTransactions = 0;
+
+      for (const transaction of pageTransactions) {
+        const signature = transactionSignature(transaction);
+        if (seenRows.has(signature)) continue;
+        seenRows.add(signature);
+        transactions.push(transaction);
+        addedTransactions += 1;
+      }
+
+      return { addedTransactions, totalTransactions: transactions.length };
+    },
+    getDeclaredTotals() {
+      return declaredTotals;
+    },
+    finish() {
+      return [...transactions].sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      );
+    },
+  };
 }

@@ -1,5 +1,5 @@
 const { withDangerousMod } = require("expo/config-plugins");
-const { copyFileSync, mkdirSync } = require("node:fs");
+const { copyFileSync, mkdirSync, readFileSync, writeFileSync } = require("node:fs");
 const { join } = require("node:path");
 
 /**
@@ -25,6 +25,17 @@ module.exports = function withPdfJs(config) {
       mkdirSync(targetRoot, { recursive: true });
       copyFileSync(join(sourceRoot, "pdf.mjs"), join(targetRoot, "pdf.mjs"));
       copyFileSync(join(sourceRoot, "pdf.worker.mjs"), join(targetRoot, "pdf.worker.mjs"));
+
+      const compatibilitySource = readFileSync(
+        join(projectRoot, "assets", "pdfjs", "worker-polyfills.js"),
+        "utf8",
+      );
+      const workerSource = readFileSync(join(sourceRoot, "pdf.worker.mjs"), "utf8");
+      writeFileSync(
+        join(targetRoot, "pdf.worker.compat.mjs"),
+        `${compatibilitySource}\n${workerSource}`,
+        "utf8",
+      );
       return modConfig;
     },
   ]);

@@ -10,15 +10,30 @@ import {
   PdfWebView,
   type PdfWebViewHandle,
 } from "@/features/conversion/pdf/PdfWebView";
-import { parseMpesaStatement } from "@/features/conversion/services/mpesaParser";
+import { expandCompactPdfItems } from "@/features/conversion/pdf/compactItems";
+import {
+  createIncrementalMpesaParser,
+} from "@/features/conversion/services/mpesaParser";
+import { removeTemporaryStatement } from "@/features/conversion/services/documentPicker";
+import { reconcileStatementTotals } from "@/features/preview/services/reconciliation";
+import { summarizeTransactions } from "@/features/preview/services/summary";
 import { colors } from "@/theme/colors";
 import type { PdfBridgeMessage } from "@/types/pdf";
+import { PerformanceTrace } from "@/utils/performance";
 
 export function ProcessingScreen() {
   const router = useRouter();
-  const { document, setTransactions, setError } = useConversion();
+  const {
+    document,
+    setTransactions,
+    setReconciliation,
+    setError,
+  } = useConversion();
   const pdfRef = useRef<PdfWebViewHandle>(null);
   const base64Ref = useRef("");
+  const performanceRef = useRef(new PerformanceTrace("conversion"));
+  const parserRef = useRef(createIncrementalMpesaParser());
+  const parsedItemCountRef = useRef(0);
   const [fileReady, setFileReady] = useState(false);
   const [bridgeReady, setBridgeReady] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -33,10 +48,16 @@ export function ProcessingScreen() {
     }
 
     let active = true;
+    performanceRef.current.start("session.total");
+    performanceRef.current.start("file.read");
     readAsStringAsync(document.uri, { encoding: EncodingType.Base64 })
       .then((value) => {
         if (active) {
           base64Ref.current = value;
+          performanceRef.current.end("file.read", {
+            fileBytes: document.size ?? null,
+            base64Characters: value.length,
+          });
           setFileReady(true);
         }
       })
@@ -76,7 +97,15 @@ export function ProcessingScreen() {
   function handleMessage(message: PdfBridgeMessage) {
     switch (message.type) {
       case "READY":
+        performanceRef.current.end("webview.initialize");
         setBridgeReady(true);
+        break;
+      case "PERFORMANCE":
+        performanceRef.current.record(
+          `pdf.${message.stage}`,
+          message.durationMs,
+          message.details,
+        );
         break;
       case "PASSWORD_REQUIRED":
         setIncorrectPassword(false);
@@ -90,22 +119,67 @@ export function ProcessingScreen() {
         setProgress({ current: message.current, total: message.total });
         setLabel(`Reading page ${message.current} of ${message.total}…`);
         break;
-      case "EXTRACTED": {
-        const itemCount = message.pages.reduce((total, page) => total + page.length, 0);
-        if (!itemCount) {
+      case "PAGE_EXTRACTED": {
+        const parserStartedAt = globalThis.performance?.now?.() ?? Date.now();
+        parsedItemCountRef.current += message.items.length;
+        const expandedItems = expandCompactPdfItems(message.items, message.page);
+        const result = parserRef.current.addPage(expandedItems);
+        performanceRef.current.record(
+          "parser.page",
+          (globalThis.performance?.now?.() ?? Date.now()) - parserStartedAt,
+          {
+            page: message.page,
+            textItems: message.items.length,
+            addedTransactions: result.addedTransactions,
+            totalTransactions: result.totalTransactions,
+          },
+        );
+        setProgress({ current: message.page, total: message.pageCount });
+        setLabel(`Processed page ${message.page} of ${message.pageCount}…`);
+        break;
+      }
+      case "EXTRACTION_COMPLETE": {
+        if (!message.totalItems) {
           fail("This PDF has no readable text. It may be a scanned or image-based statement.");
           return;
         }
         setLabel("Organizing your transactions…");
-        const parsed = parseMpesaStatement(message.pages);
+        performanceRef.current.start("parser");
+        const parsed = parserRef.current.finish();
+        performanceRef.current.end("parser", {
+          pages: message.pageCount,
+          textItems: parsedItemCountRef.current,
+          transactions: parsed.length,
+        });
         if (!parsed.length) {
           fail("We couldn’t find M-PESA transactions in this PDF. Check that it is a valid statement.");
           return;
         }
+        const reconciliation = reconcileStatementTotals(
+          summarizeTransactions(parsed),
+          parserRef.current.getDeclaredTotals(),
+        );
         setTransactions(parsed);
+        setReconciliation(reconciliation);
+        if (document) {
+          const removedTemporaryPdf = removeTemporaryStatement(document.uri);
+          performanceRef.current.record("file.cleanup", 0, {
+            removed: removedTemporaryPdf,
+          });
+        }
+        performanceRef.current.end("session.total", {
+          pages: message.pageCount,
+          transactions: parsed.length,
+          totalsMatched: reconciliation.status === "matched",
+        });
         router.replace("/preview");
         break;
       }
+      case "EXTRACTED":
+        // Backward-compatible guard for an old WebView bundle during fast
+        // refresh. A full reload switches to incremental PAGE_EXTRACTED events.
+        fail("The PDF reader was updated. Please reload the app and try again.");
+        break;
       case "ERROR":
         fail(message.message || "The statement could not be processed.");
         break;
@@ -140,7 +214,15 @@ export function ProcessingScreen() {
           <Text style={styles.privacyText}>Everything is happening privately on your device</Text>
         </View>
       </View>
-      <PdfWebView ref={pdfRef} onMessage={handleMessage} />
+      <PdfWebView
+        ref={(instance) => {
+          if (instance && !pdfRef.current) {
+            performanceRef.current.start("webview.initialize");
+          }
+          pdfRef.current = instance;
+        }}
+        onMessage={handleMessage}
+      />
       <PasswordModal
         visible={passwordVisible}
         incorrect={incorrectPassword}

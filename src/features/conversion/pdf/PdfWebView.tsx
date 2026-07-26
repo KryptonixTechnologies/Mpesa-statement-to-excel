@@ -120,33 +120,45 @@ const bridgeHtml = `
         });
       }
 
-      // A dedicated worker has a separate JavaScript environment and would not
-      // inherit the compatibility methods above. pdf.js automatically falls
-      // back to its in-page worker when Worker construction is unavailable.
-      Object.defineProperty(window, "Worker", {
-        value: undefined,
-        configurable: true,
-      });
     </script>
     <script type="module">
       import * as pdfjsLib from "./pdf.mjs";
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "./pdf.worker.mjs";
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "./pdf.worker.compat.mjs";
 
-      const send = (payload) =>
-        window.ReactNativeWebView.postMessage(JSON.stringify(payload));
+      const send = (payload) => {
+        const serialized = JSON.stringify(payload);
+        window.ReactNativeWebView.postMessage(serialized);
+        return serialized.length;
+      };
+
+      send({
+        type: "PERFORMANCE",
+        stage: "worker.support",
+        durationMs: 0,
+        details: { available: typeof Worker === "function" },
+      });
 
       const decodeBase64 = (value) => {
+        const startedAt = performance.now();
         const binary = atob(value);
         const bytes = new Uint8Array(binary.length);
         for (let index = 0; index < binary.length; index += 1) {
           bytes[index] = binary.charCodeAt(index);
         }
+        send({
+          type: "PERFORMANCE",
+          stage: "base64.decode",
+          durationMs: performance.now() - startedAt,
+          details: { bytes: bytes.length },
+        });
         return bytes;
       };
 
       async function extract(base64, password) {
         let waitingForPassword = false;
+        const extractionStartedAt = performance.now();
         try {
+          const openStartedAt = performance.now();
           const loadingTask = pdfjsLib.getDocument({
             data: decodeBase64(base64),
             password: password || undefined,
@@ -161,25 +173,74 @@ const bridgeHtml = `
           };
 
           const pdf = await loadingTask.promise;
-          const pages = [];
+          send({
+            type: "PERFORMANCE",
+            stage: "worker.mode",
+            durationMs: 0,
+            details: {
+              dedicated:
+                typeof Worker === "function" &&
+                loadingTask._worker?.port instanceof Worker,
+            },
+          });
+          send({
+            type: "PERFORMANCE",
+            stage: "document.open",
+            durationMs: performance.now() - openStartedAt,
+            details: { pages: pdf.numPages, passwordProvided: Boolean(password) },
+          });
+          let totalItems = 0;
 
           for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+            const pageStartedAt = performance.now();
             send({ type: "PROGRESS", current: pageNumber, total: pdf.numPages });
             const page = await pdf.getPage(pageNumber);
             const content = await page.getTextContent();
-            pages.push(content.items
+            const items = content.items
               .filter((item) => typeof item.str === "string" && item.str.trim())
-              .map((item) => ({
-                text: item.str,
-                x: item.transform[4],
-                y: item.transform[5],
-                width: item.width || 0,
+              .map((item) => [
+                item.str.trim(),
+                Math.round(item.transform[4] * 100) / 100,
+                Math.round(item.transform[5] * 100) / 100,
+              ]);
+            totalItems += items.length;
+            send({
+              type: "PERFORMANCE",
+              stage: "page.extract",
+              durationMs: performance.now() - pageStartedAt,
+              details: { page: pageNumber, items: items.length },
+            });
+            const bridgeCharacters = send({
+              type: "PAGE_EXTRACTED",
+              page: pageNumber,
+              pageCount: pdf.numPages,
+              items,
+            });
+            send({
+              type: "PERFORMANCE",
+              stage: "bridge.page",
+              durationMs: 0,
+              details: {
                 page: pageNumber,
-              })));
+                characters: bridgeCharacters,
+                items: items.length,
+              },
+            });
             page.cleanup();
+            items.length = 0;
           }
 
-          send({ type: "EXTRACTED", pages, pageCount: pdf.numPages });
+          send({
+            type: "PERFORMANCE",
+            stage: "extraction.total",
+            durationMs: performance.now() - extractionStartedAt,
+            details: { pages: pdf.numPages },
+          });
+          send({
+            type: "EXTRACTION_COMPLETE",
+            pageCount: pdf.numPages,
+            totalItems,
+          });
           await pdf.destroy();
         } catch (error) {
           if (waitingForPassword) return;

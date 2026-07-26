@@ -1,4 +1,5 @@
 import * as DocumentPicker from "expo-document-picker";
+import { File, Paths } from "expo-file-system";
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
@@ -32,4 +33,18 @@ export async function pickStatementPdf(): Promise<PickResult> {
   }
 
   return { status: "selected", file };
+}
+
+export function removeTemporaryStatement(uri: string) {
+  // DocumentPicker copies the selected PDF into our cache. Never delete a URI
+  // outside that private cache because it may be the user's original file.
+  if (!uri.startsWith(Paths.cache.uri)) return false;
+  try {
+    const file = new File(uri);
+    if (!file.exists) return false;
+    file.delete();
+    return true;
+  } catch {
+    return false;
+  }
 }

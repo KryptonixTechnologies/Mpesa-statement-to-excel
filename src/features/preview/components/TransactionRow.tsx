@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { colors } from "@/theme/colors";
 import { spacing } from "@/theme/spacing";
@@ -8,7 +9,11 @@ const money = new Intl.NumberFormat("en-KE", {
   maximumFractionDigits: 2,
 });
 
-export function TransactionRow({ transaction }: { transaction: Transaction }) {
+export const TransactionRow = memo(function TransactionRow({
+  transaction,
+}: {
+  transaction: Transaction;
+}) {
   const date = new Date(transaction.date);
   const dateText = Number.isNaN(date.getTime())
     ? transaction.date
@@ -39,7 +44,7 @@ export function TransactionRow({ transaction }: { transaction: Transaction }) {
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   row: {

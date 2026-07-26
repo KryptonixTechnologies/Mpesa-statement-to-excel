@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { colors } from "@/theme/colors";
 import { spacing } from "@/theme/spacing";
@@ -16,7 +17,11 @@ function shortDate(value: string | null) {
     : date.toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" });
 }
 
-export function SummaryCard({ summary }: { summary: StatementSummary }) {
+export const SummaryCard = memo(function SummaryCard({
+  summary,
+}: {
+  summary: StatementSummary;
+}) {
   return (
     <View style={styles.card}>
       <View style={styles.top}>
@@ -42,7 +47,7 @@ export function SummaryCard({ summary }: { summary: StatementSummary }) {
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

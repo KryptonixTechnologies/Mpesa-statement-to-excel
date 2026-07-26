@@ -1,7 +1,8 @@
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
-import * as XLSX from "xlsx";
 import type { StatementSummary, Transaction } from "@/types/transaction";
+import { PerformanceTrace } from "@/utils/performance";
+import { isGeneratedWorkbookName } from "@/features/export/services/cachePolicy";
 
 function safeDate(date: string | null) {
   if (!date) return "unknown";
@@ -14,10 +15,42 @@ function createFilename(summary: StatementSummary) {
   return `MPESA_Statement_${safeDate(summary.startDate)}_to_${safeDate(summary.endDate)}.xlsx`;
 }
 
+function removeStaleWorkbooks(keepFilename: string) {
+  let removed = 0;
+  try {
+    for (const entry of Paths.cache.list()) {
+      if (
+        entry instanceof File &&
+        entry.name !== keepFilename &&
+        isGeneratedWorkbookName(entry.name)
+      ) {
+        entry.delete();
+        removed += 1;
+      }
+    }
+  } catch {
+    // Cache cleanup must never prevent the user from exporting.
+  }
+  return removed;
+}
+
 export async function createExcelFile(
   transactions: Transaction[],
   summary: StatementSummary,
 ): Promise<string> {
+  const performance = new PerformanceTrace("export");
+  performance.start("total");
+  const filename = createFilename(summary);
+  performance.start("cache.cleanup");
+  const removedWorkbooks = removeStaleWorkbooks(filename);
+  performance.end("cache.cleanup", { removedWorkbooks });
+  performance.start("engine.load");
+  // SheetJS is one of the largest JavaScript modules in the app. Loading it
+  // only after the user requests export keeps preview scrolling responsive and
+  // lowers memory pressure during normal review.
+  const XLSX = await import("xlsx");
+  performance.end("engine.load");
+  performance.start("rows.prepare");
   const rows = transactions.map((item) => ({
     "Receipt No": item.receiptNo,
     "Completion Time": new Date(item.date),
@@ -27,7 +60,9 @@ export async function createExcelFile(
     Withdrawn: item.withdrawn,
     Balance: item.balance,
   }));
+  performance.end("rows.prepare", { transactions: transactions.length });
 
+  performance.start("worksheet.create");
   const sheet = XLSX.utils.json_to_sheet(rows, {
     header: [
       "Receipt No",
@@ -67,7 +102,9 @@ export async function createExcelFile(
       if (sheet[`${column}${row}`]) sheet[`${column}${row}`].z = '#,##0.00';
     }
   }
+  performance.end("worksheet.create", { rows: rows.length });
 
+  performance.start("workbook.serialize");
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, sheet, "M-PESA Transactions");
   workbook.Props = {
@@ -77,13 +114,26 @@ export async function createExcelFile(
     CreatedDate: new Date(),
   };
 
-  const bytes = XLSX.write(workbook, { bookType: "xlsx", type: "array", compression: true });
-  const file = new File(Paths.cache, createFilename(summary));
-  file.write(new Uint8Array(bytes));
+  const serialized = XLSX.write(workbook, {
+    bookType: "xlsx",
+    type: "array",
+    compression: true,
+  });
+  const bytes =
+    serialized instanceof Uint8Array ? serialized : new Uint8Array(serialized);
+  performance.end("workbook.serialize", { bytes: bytes.byteLength });
+  performance.start("file.write");
+  const file = new File(Paths.cache, filename);
+  if (file.exists) file.delete();
+  file.write(bytes);
+  performance.end("file.write", { bytes: bytes.byteLength });
+  performance.end("total", { transactions: transactions.length, bytes: bytes.byteLength });
   return file.uri;
 }
 
 export async function shareExcelFile(uri: string) {
+  const performance = new PerformanceTrace("export");
+  performance.start("share.sheet");
   const available = await Sharing.isAvailableAsync();
   if (!available) {
     throw new Error("Sharing is not available on this device.");
@@ -93,4 +143,5 @@ export async function shareExcelFile(uri: string) {
     dialogTitle: "Save or share your Excel statement",
     UTI: "org.openxmlformats.spreadsheetml.sheet",
   });
+  performance.end("share.sheet");
 }
