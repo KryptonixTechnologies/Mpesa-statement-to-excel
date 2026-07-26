@@ -1,16 +1,21 @@
-# M-PESA Statement to Excel
+# Statement to Excel Kenya
 
-A privacy-first Android application that converts original, text-based M-PESA PDF
+A privacy-first Android application for converting Kenyan mobile-money and bank PDF
 statements into organized Excel workbooks. PDF decryption, transaction extraction,
-accuracy checks, workbook creation, and temporary-file cleanup all run locally on
-the device.
+accuracy checks, workbook creation, and cleanup run locally on the device.
 
 > This is an independent community utility. It is not affiliated with or endorsed
 > by Safaricom PLC.
 
 ## Current status
 
-Version `1.0.0` implements the complete Android conversion flow:
+The provider architecture now supports expansion across Kenyan institutions.
+M-PESA, Absa Bank Kenya, and Co-operative Bank conversion are available today.
+KCB, NCBA Bank, and Equity Bank are registered as the next providers and can be
+identified by the app, but their transaction parsers still require anonymized
+statement samples and accuracy testing.
+
+Version `1.0.0` currently implements:
 
 - Select one PDF, with file-type and 20 MB size validation.
 - Open password-protected statements and retry incorrect passwords.
@@ -30,8 +35,8 @@ targets.
 
 ## User flow
 
-1. Tap **Choose M-PESA statement**.
-2. Select an original M-PESA PDF statement.
+1. Tap **Choose statement PDF**.
+2. Select an original supported PDF statement.
 3. Enter the PDF password if requested.
 4. Wait while pages are read and transactions are organized.
 5. Review the date range, totals, and parsed transaction rows.
@@ -116,7 +121,7 @@ assets during prebuild.
 npm run typecheck
 npm test
 npx expo install --check
-npx expo export --platform android --dev --clear --output-dir /tmp/mpesa-export-check
+npx expo export --platform android --dev --clear --output-dir /tmp/statement-excel-check
 ```
 
 The current suite covers parsing, duplicate handling, ISO-style dates, incremental
@@ -193,6 +198,7 @@ product.md                   Original v1 product requirements
 
 ## Documentation
 
+- [Multi-provider product direction](docs/PRODUCT_V2.md)
 - [Product implementation status](docs/IMPLEMENTATION_STATUS.md)
 - [Architecture and data flow](docs/ARCHITECTURE.md)
 - [Development guide](docs/DEVELOPMENT.md)

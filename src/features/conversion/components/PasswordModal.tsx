@@ -41,8 +41,8 @@ export function PasswordModal({ visible, incorrect, onSubmit, onCancel }: Props)
           </View>
           <Text style={styles.title}>Statement password</Text>
           <Text style={styles.copy}>
-            Enter the password you use to open this M-PESA statement. It may be your ID number
-            or the password you set when requesting it.
+            Enter the password used to open this statement. It may be your ID number or a
+            password set when the statement was requested.
           </Text>
           <View style={[styles.inputRow, incorrect && styles.inputError]}>
             <TextInput

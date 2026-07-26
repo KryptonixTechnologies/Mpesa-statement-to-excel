@@ -11,7 +11,7 @@ import { colors } from "@/theme/colors";
 import { spacing } from "@/theme/spacing";
 
 const steps = [
-  ["file-pdf-box", "Choose statement", "Select your M-PESA PDF from your phone."],
+  ["file-pdf-box", "Choose statement", "Select a supported statement PDF from your phone."],
   ["shield-lock-outline", "Processed privately", "Your statement stays on this device."],
   ["file-excel-outline", "Save as Excel", "Preview, export, and share your spreadsheet."],
 ] as const;
@@ -54,18 +54,34 @@ export function HomeScreen() {
           <MaterialCommunityIcons name="shield-check-outline" size={17} color={colors.primary} />
           <Text style={styles.badgeText}>100% private and offline</Text>
         </View>
-        <Text style={styles.title}>Turn your M-PESA statement into Excel</Text>
+        <Text style={styles.title}>Turn your statement into Excel</Text>
         <Text style={styles.subtitle}>
-          Convert a PDF statement into an organized spreadsheet in under a minute.
+          Privately convert M-PESA statements today. Kenyan bank support is coming next.
         </Text>
         <AppButton
-          label="Choose M-PESA statement"
+          label="Choose statement PDF"
           onPress={chooseDocument}
           loading={picking}
           style={styles.primaryButton}
         />
         <Text style={styles.fileHint}>PDF only · Maximum 20 MB</Text>
         {message && <Text style={styles.error}>{message}</Text>}
+      </View>
+
+      <View style={styles.support}>
+        <Text style={styles.sectionTitle}>Provider support</Text>
+        <View style={styles.providerRow}>
+          {["M-PESA", "Absa", "Co-op"].map((provider) => (
+            <View key={provider} style={styles.supportedPill}>
+              <Text style={styles.supportedText}>{provider} · Available</Text>
+            </View>
+          ))}
+          {["KCB", "NCBA", "Equity"].map((provider) => (
+            <View key={provider} style={styles.comingPill}>
+              <Text style={styles.comingText}>{provider} · Coming soon</Text>
+            </View>
+          ))}
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -137,6 +153,31 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   sectionTitle: { color: colors.text, fontSize: 20, fontWeight: "800" },
+  support: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: spacing.lg,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  providerRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  supportedPill: {
+    backgroundColor: colors.primarySoft,
+    borderRadius: 16,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+  },
+  supportedText: { color: colors.primaryDark, fontSize: 12, fontWeight: "700" },
+  comingPill: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+  },
+  comingText: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
   step: { flexDirection: "row", gap: 14 },
   stepIcon: {
     width: 44,

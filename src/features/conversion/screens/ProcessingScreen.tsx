@@ -11,10 +11,8 @@ import {
   type PdfWebViewHandle,
 } from "@/features/conversion/pdf/PdfWebView";
 import { expandCompactPdfItems } from "@/features/conversion/pdf/compactItems";
-import {
-  createIncrementalMpesaParser,
-} from "@/features/conversion/services/mpesaParser";
 import { removeTemporaryStatement } from "@/features/conversion/services/documentPicker";
+import { createStatementParser } from "@/features/statements/services/statementParser";
 import { reconcileStatementTotals } from "@/features/preview/services/reconciliation";
 import { summarizeTransactions } from "@/features/preview/services/summary";
 import { colors } from "@/theme/colors";
@@ -27,12 +25,13 @@ export function ProcessingScreen() {
     document,
     setTransactions,
     setReconciliation,
+    setProvider,
     setError,
   } = useConversion();
   const pdfRef = useRef<PdfWebViewHandle>(null);
   const base64Ref = useRef("");
   const performanceRef = useRef(new PerformanceTrace("conversion"));
-  const parserRef = useRef(createIncrementalMpesaParser());
+  const parserRef = useRef(createStatementParser());
   const parsedItemCountRef = useRef(0);
   const [fileReady, setFileReady] = useState(false);
   const [bridgeReady, setBridgeReady] = useState(false);
@@ -124,6 +123,7 @@ export function ProcessingScreen() {
         parsedItemCountRef.current += message.items.length;
         const expandedItems = expandCompactPdfItems(message.items, message.page);
         const result = parserRef.current.addPage(expandedItems);
+        if (result.provider) setProvider(result.provider);
         performanceRef.current.record(
           "parser.page",
           (globalThis.performance?.now?.() ?? Date.now()) - parserStartedAt,
@@ -144,6 +144,13 @@ export function ProcessingScreen() {
           return;
         }
         setLabel("Organizing your transactions…");
+        const provider = parserRef.current.getProvider();
+        if (provider && !provider.supported) {
+          fail(
+            `${provider.displayName} statements have been detected, but support is still coming soon.`,
+          );
+          return;
+        }
         performanceRef.current.start("parser");
         const parsed = parserRef.current.finish();
         performanceRef.current.end("parser", {
@@ -152,7 +159,9 @@ export function ProcessingScreen() {
           transactions: parsed.length,
         });
         if (!parsed.length) {
-          fail("We couldn’t find M-PESA transactions in this PDF. Check that it is a valid statement.");
+          fail(
+            "We couldn’t identify supported statement transactions in this PDF. M-PESA, Absa, and Co-operative Bank are currently supported; more bank parsers are being added.",
+          );
           return;
         }
         const reconciliation = reconcileStatementTotals(

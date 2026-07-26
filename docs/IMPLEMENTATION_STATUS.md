@@ -1,6 +1,7 @@
 # Product Implementation Status
 
-This maps the original `product.md` requirements to version `1.0.0`.
+This maps the original `product.md` requirements to version `1.0.0`. The new
+multi-provider direction is defined in `PRODUCT_V2.md`.
 
 ## Implemented
 
@@ -12,6 +13,7 @@ This maps the original `product.md` requirements to version `1.0.0`.
 | On-device decryption | Bundled offline `pdf.js` WebView |
 | Multi-page extraction | Sequential page extraction with progress |
 | M-PESA parser | Coordinates, anchors, wrapping, defensive fallback |
+| Provider foundation | Registry, detection, common parser session and M-PESA adapter |
 | Headers/duplicates | Repeated-header skipping and exact-row signatures |
 | Preview | Summary plus virtualized transaction list |
 | Accuracy | Parsed totals reconciled with official PDF totals |
@@ -33,6 +35,7 @@ This maps the original `product.md` requirements to version `1.0.0`.
 | Low-end performance | Major memory/list/bridge optimizations | Wider low-memory device benchmarks |
 | Store readiness | Package/API/privacy docs/release build | Branding, signing, AAB, hosted policy/forms |
 | Format resilience | Defensive parser/regression tests | More synthetic historical/future fixtures |
+| Bank support | Absa and Co-op parsers/reconciliation; KCB, NCBA and Equity detection | Remaining provider parsers |
 
 ## Out of scope/not implemented
 
@@ -45,7 +48,8 @@ reconciliation, which checks exported data more directly.
 
 ## Release state
 
-- Package: `com.mpesa.statementtoexcel`
+- Product name: Statement to Excel Kenya
+- Package: `com.mpesa.statementtoexcel` (temporarily retained for tester compatibility)
 - Version: `1.0.0` (`versionCode` 1)
 - Minimum SDK: 24
 - Target/compile SDK: 36

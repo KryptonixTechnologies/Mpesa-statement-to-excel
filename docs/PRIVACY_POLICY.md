@@ -2,7 +2,7 @@
 
 **Effective date:** 23 July 2026
 
-M-PESA Statement to Excel processes files entirely on your device. We do not
+Statement to Excel Kenya processes files entirely on your device. We do not
 collect, transmit, store, sell, or share personal information, financial
 information, PDF statements, statement passwords, or converted transaction data.
 

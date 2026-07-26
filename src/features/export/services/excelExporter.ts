@@ -3,6 +3,7 @@ import * as Sharing from "expo-sharing";
 import type { StatementSummary, Transaction } from "@/types/transaction";
 import { PerformanceTrace } from "@/utils/performance";
 import { isGeneratedWorkbookName } from "@/features/export/services/cachePolicy";
+import type { RegisteredStatementProvider } from "@/features/statements/providers/types";
 
 function safeDate(date: string | null) {
   if (!date) return "unknown";
@@ -11,8 +12,11 @@ function safeDate(date: string | null) {
   return value.toISOString().slice(0, 10);
 }
 
-function createFilename(summary: StatementSummary) {
-  return `MPESA_Statement_${safeDate(summary.startDate)}_to_${safeDate(summary.endDate)}.xlsx`;
+function createFilename(
+  summary: StatementSummary,
+  provider: RegisteredStatementProvider,
+) {
+  return `Statement_Excel_Kenya_${provider.shortName}_${safeDate(summary.startDate)}_to_${safeDate(summary.endDate)}.xlsx`;
 }
 
 function removeStaleWorkbooks(keepFilename: string) {
@@ -37,10 +41,11 @@ function removeStaleWorkbooks(keepFilename: string) {
 export async function createExcelFile(
   transactions: Transaction[],
   summary: StatementSummary,
+  provider: RegisteredStatementProvider,
 ): Promise<string> {
   const performance = new PerformanceTrace("export");
   performance.start("total");
-  const filename = createFilename(summary);
+  const filename = createFilename(summary, provider);
   performance.start("cache.cleanup");
   const removedWorkbooks = removeStaleWorkbooks(filename);
   performance.end("cache.cleanup", { removedWorkbooks });
@@ -52,7 +57,7 @@ export async function createExcelFile(
   performance.end("engine.load");
   performance.start("rows.prepare");
   const rows = transactions.map((item) => ({
-    "Receipt No": item.receiptNo,
+    Reference: item.receiptNo,
     "Completion Time": new Date(item.date),
     Details: item.details,
     "Transaction Status": item.status,
@@ -65,7 +70,7 @@ export async function createExcelFile(
   performance.start("worksheet.create");
   const sheet = XLSX.utils.json_to_sheet(rows, {
     header: [
-      "Receipt No",
+      "Reference",
       "Completion Time",
       "Details",
       "Transaction Status",
@@ -106,11 +111,11 @@ export async function createExcelFile(
 
   performance.start("workbook.serialize");
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, sheet, "M-PESA Transactions");
+  XLSX.utils.book_append_sheet(workbook, sheet, `${provider.shortName} Transactions`);
   workbook.Props = {
-    Title: "M-PESA Statement",
-    Subject: "Converted M-PESA transactions",
-    Author: "M-PESA to Excel",
+    Title: `${provider.displayName} Statement`,
+    Subject: `Converted ${provider.displayName} transactions`,
+    Author: "Statement to Excel Kenya",
     CreatedDate: new Date(),
   };
 

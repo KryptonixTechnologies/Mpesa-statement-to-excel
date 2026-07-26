@@ -11,7 +11,7 @@ import { spacing } from "@/theme/spacing";
 
 export function SuccessScreen() {
   const router = useRouter();
-  const { exportedFileUri, reset } = useConversion();
+  const { exportedFileUri, provider, reset } = useConversion();
   const [sharing, setSharing] = useState(false);
 
   async function shareAgain() {
@@ -42,7 +42,9 @@ export function SuccessScreen() {
       <View style={styles.card}>
         <MaterialCommunityIcons name="file-excel" size={32} color={colors.primary} />
         <View style={styles.fileCopy}>
-          <Text style={styles.fileTitle}>M-PESA Excel statement</Text>
+          <Text style={styles.fileTitle}>
+            {provider ? `${provider.displayName} Excel statement` : "Excel statement"}
+          </Text>
           <Text style={styles.fileSubtitle}>Excel workbook · .xlsx</Text>
         </View>
       </View>

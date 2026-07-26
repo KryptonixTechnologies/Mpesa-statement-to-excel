@@ -2,7 +2,8 @@
 
 ## Design goals
 
-The app is frontend-only and offline-capable. Its main constraints are:
+Statement to Excel Kenya is frontend-only and offline-capable. Its main constraints
+are:
 
 1. Financial documents and passwords remain on the device.
 2. Password-protected PDFs open without a server.
@@ -46,7 +47,8 @@ database or persistent conversion history.
 ```text
 Android picker -> validated cached PDF -> Base64 read
      -> hidden local WebView + bundled pdf.js worker
-     -> compact page messages -> incremental M-PESA parser
+     -> compact page messages -> provider detection
+     -> provider-specific incremental parser
      -> summary + official-total reconciliation
      -> virtualized preview -> lazy SheetJS export -> Android share sheet
 ```
@@ -95,7 +97,26 @@ The WebView:
 This avoids a single huge bridge payload and avoids retaining every raw page in
 React Native memory.
 
-### Parser
+### Provider registry
+
+`src/features/statements/providers/` defines the common provider contract and
+registry. Each provider has an ID, names, support status, detection function, and
+an incremental parser factory when supported.
+
+M-PESA is supported through an adapter around its proven parser. Absa has a
+dedicated parser for Txn Date, Description, User Narrative, Money Out, Money In,
+and Balance. Co-operative Bank has a parser for Trans Date, Transaction Details,
+Reference No, Value Date, Debit, Credit, and Book Balance, including wrapped
+details. Both bank parsers reconcile against their official debit/credit totals.
+KCB, NCBA, and Equity currently have detection markers and `supported: false`. A
+recognized unsupported statement gets a provider-specific “coming soon” message
+rather than being parsed with the wrong layout.
+
+`createStatementParser()` buffers early pages until a provider is detected, creates
+the correct parser, and replays buffered pages. This keeps `ProcessingScreen`
+provider-neutral.
+
+### M-PESA parser
 
 `mpesaParser.ts`:
 
@@ -111,7 +132,7 @@ React Native memory.
 - sorts transactions chronologically;
 - extracts official `TOTAL:` Paid In/Paid Out values.
 
-The incremental parser retains normalized transactions, exact-row signatures, and
+The incremental M-PESA parser retains normalized transactions, exact-row signatures, and
 declared totals—not every page's raw text.
 
 ### Accuracy reconciliation
@@ -143,9 +164,9 @@ reachable.
 SheetJS loads only after export is requested. One animation frame is yielded first
 so the loading indicator can render.
 
-The `M-PESA Transactions` worksheet contains:
+The `<provider> Transactions` worksheet contains:
 
-1. Receipt No
+1. Reference
 2. Completion Time
 3. Details
 4. Transaction Status
@@ -157,7 +178,7 @@ Dates and amounts use proper cell types/formats. Column widths, autofilter, work
 metadata, compression, and filename are configured:
 
 ```text
-MPESA_Statement_<start-date>_to_<end-date>.xlsx
+Statement_Excel_Kenya_<provider>_<start-date>_to_<end-date>.xlsx
 ```
 
 Old cache files are deleted only when their names match the app-generated workbook

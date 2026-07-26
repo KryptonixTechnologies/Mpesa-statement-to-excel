@@ -6,6 +6,11 @@ describe("isGeneratedWorkbookName", () => {
     expect(
       isGeneratedWorkbookName("MPESA_Statement_2026-06-23_to_2026-07-23.xlsx"),
     ).toBe(true);
+    expect(
+      isGeneratedWorkbookName(
+        "Statement_Excel_Kenya_MPESA_2026-06-23_to_2026-07-23.xlsx",
+      ),
+    ).toBe(true);
     expect(isGeneratedWorkbookName("personal-budget.xlsx")).toBe(false);
     expect(isGeneratedWorkbookName("MPESA_Statement_notes.pdf")).toBe(false);
   });

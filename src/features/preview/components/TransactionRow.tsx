@@ -37,7 +37,9 @@ export const TransactionRow = memo(function TransactionRow({
           {incoming ? "+" : "−"} KES {money.format(amount)}
         </Text>
       </View>
-      <Text numberOfLines={2} style={styles.details}>{transaction.details || "M-PESA transaction"}</Text>
+      <Text numberOfLines={2} style={styles.details}>
+        {transaction.details || "Statement transaction"}
+      </Text>
       <View style={styles.bottom}>
         <Text style={styles.meta}>{dateText}</Text>
         <Text style={styles.balance}>Balance: {money.format(transaction.balance)}</Text>

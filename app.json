@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "M-PESA to Excel",
-    "slug": "mpesa-statement-to-excel",
+    "name": "Statement to Excel Kenya",
+    "slug": "statement-to-excel-kenya",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "mpesaexcel",
+    "scheme": "statementexcelke",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "android": {

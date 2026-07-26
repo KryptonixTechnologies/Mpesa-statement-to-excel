@@ -27,6 +27,7 @@ export function PreviewScreen() {
     transactions,
     summary,
     reconciliation,
+    provider,
     setExportedFileUri,
     setError,
   } = useConversion();
@@ -38,13 +39,13 @@ export function PreviewScreen() {
   }
 
   async function exportStatement() {
-    if (!reconciliation || reconciliation.status === "mismatch") return;
+    if (!provider || !reconciliation || reconciliation.status === "mismatch") return;
     setExporting(true);
     try {
       // Let React commit the loading indicator before SheetJS begins its
       // synchronous workbook construction.
       await yieldToInterface();
-      const uri = await createExcelFile(transactions, summary!);
+      const uri = await createExcelFile(transactions, summary!, provider);
       setExportedFileUri(uri);
       await shareExcelFile(uri);
       router.push("/success");
@@ -67,7 +68,11 @@ export function PreviewScreen() {
         <View style={styles.titleRow}>
           <View>
             <Text style={styles.title}>Review transactions</Text>
-            <Text style={styles.subtitle}>Check the details before exporting</Text>
+            <Text style={styles.subtitle}>
+              {provider
+                ? `${provider.displayName} · Check the details before exporting`
+                : "Check the details before exporting"}
+            </Text>
           </View>
           <MaterialCommunityIcons name="check-decagram" size={30} color={colors.primary} />
         </View>
@@ -97,7 +102,7 @@ export function PreviewScreen() {
           }
           onPress={exportStatement}
           loading={exporting}
-          disabled={!reconciliation || reconciliation.status === "mismatch"}
+          disabled={!provider || !reconciliation || reconciliation.status === "mismatch"}
         />
       </View>
     </Screen>

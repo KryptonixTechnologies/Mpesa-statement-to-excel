@@ -9,12 +9,30 @@ npx expo export \
   --platform android \
   --dev \
   --clear \
-  --output-dir /tmp/mpesa-export-check
+  --output-dir /tmp/statement-excel-check
 ```
 
 Tests cover compact bridge tuples, parsing, repeated headers, exact duplicates,
 paired same-receipt rows, unrelated PDFs, ISO dates, incremental pages, PDF totals,
 summary calculations, reconciliation states, and workbook cache policy.
+
+Authorized local Absa acceptance test (the PDF remains outside the repository):
+
+```bash
+ABSA_STATEMENT_FIXTURE=/absolute/path/to/unlocked-absa.pdf \
+  npm test -- --run src/features/statements/providers/absa/absaIntegration.test.ts
+```
+
+The test extracts the PDF locally and checks provider detection, non-empty
+transactions, and exact official-total reconciliation without printing statement
+contents.
+
+Authorized local Co-operative Bank acceptance test:
+
+```bash
+COOP_STATEMENT_FIXTURE=/absolute/path/to/unlocked-coop.pdf \
+  npm test -- --run src/features/statements/providers/cooperative/cooperativeIntegration.test.ts
+```
 
 ## Manual acceptance matrix
 

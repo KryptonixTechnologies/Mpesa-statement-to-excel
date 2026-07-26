@@ -28,7 +28,8 @@ export function ErrorScreen() {
       <View style={styles.tip}>
         <Text style={styles.tipTitle}>Before trying again</Text>
         <Text style={styles.tipText}>
-          Make sure this is an original M-PESA PDF statement, not a screenshot or scanned copy.
+          Make sure this is an original text-based PDF statement, not a screenshot or scanned
+          copy.
         </Text>
       </View>
       <AppButton label="Choose another statement" onPress={tryAgain} style={styles.button} />

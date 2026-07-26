@@ -110,7 +110,7 @@ npm test
 npm start
 npm run android
 npx expo install --check
-npx expo export --platform android --dev --clear --output-dir /tmp/mpesa-export-check
+npx expo export --platform android --dev --clear --output-dir /tmp/statement-excel-check
 ```
 
 Use `npx expo install <package>` for Expo packages. After dependency changes, check

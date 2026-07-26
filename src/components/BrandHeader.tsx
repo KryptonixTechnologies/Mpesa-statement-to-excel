@@ -8,7 +8,7 @@ export function BrandHeader() {
       <View style={styles.logo}>
         <MaterialCommunityIcons name="file-excel" size={25} color={colors.white} />
       </View>
-      <Text style={styles.name}>M-PESA to Excel</Text>
+      <Text style={styles.name}>Statement to Excel Kenya</Text>
     </View>
   );
 }

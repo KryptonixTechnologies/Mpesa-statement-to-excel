@@ -62,7 +62,7 @@ If VS Code repeatedly closes, Linux/systemd users can detach the build:
 
 ```bash
 systemd-run --user \
-  --unit=mpesa-phone-release \
+  --unit=statement-excel-phone-release \
   --collect \
   --working-directory="$PWD/android" \
   --setenv=NODE_ENV=production \
@@ -80,8 +80,8 @@ systemd-run --user \
 Monitor:
 
 ```bash
-systemctl --user status mpesa-phone-release.service
-journalctl --user -u mpesa-phone-release.service -f
+systemctl --user status statement-excel-phone-release.service
+journalctl --user -u statement-excel-phone-release.service -f
 ```
 
 Use a different unit name or wait for the collected unit to disappear before
@@ -118,8 +118,9 @@ does not need Metro. Some cloud apps attempt to preview APKs and report “Unabl
 open document.” ZIP it:
 
 ```bash
-zip -9 M-PESA-to-Excel-v1.0.0-arm64.zip M-PESA-to-Excel-v1.0.0-arm64.apk
-unzip -t M-PESA-to-Excel-v1.0.0-arm64.zip
+zip -9 Statement-to-Excel-Kenya-v1.0.0-arm64.zip \
+  Statement-to-Excel-Kenya-v1.0.0-arm64.apk
+unzip -t Statement-to-Excel-Kenya-v1.0.0-arm64.zip
 ```
 
 The tester downloads the ZIP, extracts it in Files/Downloads, taps the APK, permits

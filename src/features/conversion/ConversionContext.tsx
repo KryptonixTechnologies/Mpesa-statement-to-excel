@@ -13,17 +13,20 @@ import type {
   Transaction,
 } from "@/types/transaction";
 import { summarizeTransactions } from "@/features/preview/services/summary";
+import type { RegisteredStatementProvider } from "@/features/statements/providers/types";
 
 type ConversionState = {
   document: DocumentPickerAsset | null;
   transactions: Transaction[];
   summary: StatementSummary | null;
   reconciliation: StatementReconciliation | null;
+  provider: RegisteredStatementProvider | null;
   exportedFileUri: string | null;
   error: string | null;
   setDocument: (document: DocumentPickerAsset) => void;
   setTransactions: (transactions: Transaction[]) => void;
   setReconciliation: (reconciliation: StatementReconciliation) => void;
+  setProvider: (provider: RegisteredStatementProvider) => void;
   setExportedFileUri: (uri: string) => void;
   setError: (message: string) => void;
   reset: () => void;
@@ -38,6 +41,7 @@ export function ConversionProvider({ children }: PropsWithChildren) {
   const [error, updateError] = useState<string | null>(null);
   const [reconciliation, updateReconciliation] =
     useState<StatementReconciliation | null>(null);
+  const [provider, updateProvider] = useState<RegisteredStatementProvider | null>(null);
 
   const setDocument = useCallback((file: DocumentPickerAsset) => {
     updateDocument(file);
@@ -45,6 +49,7 @@ export function ConversionProvider({ children }: PropsWithChildren) {
     updateExportedFileUri(null);
     updateError(null);
     updateReconciliation(null);
+    updateProvider(null);
   }, []);
 
   const reset = useCallback(() => {
@@ -53,6 +58,7 @@ export function ConversionProvider({ children }: PropsWithChildren) {
     updateExportedFileUri(null);
     updateError(null);
     updateReconciliation(null);
+    updateProvider(null);
   }, []);
 
   const summary = useMemo(
@@ -66,11 +72,13 @@ export function ConversionProvider({ children }: PropsWithChildren) {
       transactions,
       summary,
       reconciliation,
+      provider,
       exportedFileUri,
       error,
       setDocument,
       setTransactions: updateTransactions,
       setReconciliation: updateReconciliation,
+      setProvider: updateProvider,
       setExportedFileUri: updateExportedFileUri,
       setError: updateError,
       reset,
@@ -80,6 +88,7 @@ export function ConversionProvider({ children }: PropsWithChildren) {
       transactions,
       summary,
       reconciliation,
+      provider,
       exportedFileUri,
       error,
       setDocument,
